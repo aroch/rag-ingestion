@@ -4,9 +4,10 @@ from typing import Dict, Any
 import restate
 from restate.exceptions import TerminalError
 
-from rag.types import NewPdfDocument, NewTextDocument
+from rag.types import NewPdfDocument, NewTextDocument, NewCsvDocument
 from rag.pdf_workflow import process_pdf
 from rag.text_workflow import process_text
+from rag.csv_workflow import process_csv
 
 docs = restate.Service('docs')
 
@@ -32,6 +33,11 @@ async def webhook(ctx: restate.Context, event: Dict[str, Any]):
         ctx.workflow_send(process_text,
                           key=event_id,
                           arg=NewTextDocument(bucket_name=bucket_name,
+                                             object_name=object_name))
+    elif content_type == "text/csv" or content_type == "application/csv":
+        ctx.workflow_send(process_csv,
+                          key=event_id,
+                          arg=NewCsvDocument(bucket_name=bucket_name,
                                              object_name=object_name))
     else:
         raise TerminalError(f"Unsupported content type: {content_type}")

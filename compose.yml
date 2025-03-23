@@ -11,11 +11,15 @@ services:
     environment:
       - OLLAMA_KEEP_ALIVE=24h
       - OLLAMA_HOST=0.0.0.0
+    networks:
+      - app-network
   qdrant:
     image: qdrant/qdrant:latest 
     ports:
       - 6333:6333
       - 6334:6334
+    networks:
+      - app-network
   minio:
     image: bitnami/minio:latest
     ports:
@@ -27,6 +31,8 @@ services:
       MINIO_ROOT_PASSWORD: minioadmin
       MINIO_NOTIFY_WEBHOOK_ENABLE_RAG: on
       MINIO_NOTIFY_WEBHOOK_ENDPOINT_RAG: http://restate:8080/docs/webhook
+    networks:
+      - app-network
   setupservices:
     image: restatedev/restate-cli
     command: deployment add -y --force --connect-timeout 180000 --request-timeout 180000 http://app:9080
@@ -39,6 +45,8 @@ services:
       restart_policy:
         condition: on-failure
         delay: 5s
+    networks:
+      - app-network
   app:
     build: .
     ports:
@@ -50,6 +58,8 @@ services:
       - QDRANT_HOST=qdrant
       - OLLAMA_HOST=ollama:11434
       - OLLAMA_MODEL=mxbai-embed-large
+    networks:
+      - app-network
   restate:
     image: restatedev/restate:latest
     ports:
@@ -65,6 +75,26 @@ services:
       nofile:
         soft: 65535
         hard: 65535
+    networks:
+      - app-network
+  amazon-scraper:
+    image: amazon-scraper:latest
+    ports:
+      - "8000:8000"
+    environment:
+      - PYTHONPATH=/app
+      - PYTHONUNBUFFERED=1
+      - AWS_ACCESS_KEY_ID=minioadmin
+      - AWS_SECRET_ACCESS_KEY=minioadmin
+      - AWS_DEFAULT_REGION=us-east-1
+      - S3_ENDPOINT_URL=http://minio:9000
+      - AWS_BUCKET_NAME=docs
+    command: uvicorn app.main:app --host 0.0.0.0 --port 8000
+    depends_on:
+      - minio
+    networks:
+      - app-network
+
   setupwebhook:
     image: bitnami/minio-client:latest
     entrypoint: >
@@ -75,3 +105,9 @@ services:
       "
     depends_on:
       - minio
+    networks:
+      - app-network
+
+networks:
+  app-network:
+    driver: bridge

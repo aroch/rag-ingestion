@@ -12,4 +12,9 @@ class NewTextDocument(TypedDict):
     bucket_name: str
     object_name: str
 
+class NewCsvDocument(TypedDict):
+    """A new CSV document request """
+    bucket_name: str
+    object_name: str
+
 
